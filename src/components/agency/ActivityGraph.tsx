@@ -27,12 +27,12 @@ const ActivityGraph = () => {
             >
               <defs>
                 <linearGradient id="colorCertificates" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563eb" stopColor="#2563eb30" />
-                  <stop offset="95%" stopColor="#2563eb" stopColor="#2563eb00" />
+                  <stop offset="5%" stopColor="#2563eb" stopOpacity="0.3" />
+                  <stop offset="95%" stopColor="#2563eb" stopOpacity="0" />
                 </linearGradient>
                 <linearGradient id="colorVerifications" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopColor="#06b6d430" />
-                  <stop offset="95%" stopColor="#06b6d4" stopColor="#06b6d400" />
+                  <stop offset="5%" stopColor="#06b6d4" stopOpacity="0.3" />
+                  <stop offset="95%" stopColor="#06b6d4" stopOpacity="0" />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />

@@ -122,19 +122,21 @@ export const QrScannerComponent = ({ onScan }: QrScannerProps) => {
         </div>
       )}
       
-      <style jsx>{`
-        @keyframes scanLine {
-          0% {
-            top: 0%;
+      <style>
+        {`
+          @keyframes scanLine {
+            0% {
+              top: 0%;
+            }
+            50% {
+              top: calc(100% - 2px);
+            }
+            100% {
+              top: 0%;
+            }
           }
-          50% {
-            top: calc(100% - 2px);
-          }
-          100% {
-            top: 0%;
-          }
-        }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 };
