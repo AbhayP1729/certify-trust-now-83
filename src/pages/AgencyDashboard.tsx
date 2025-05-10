@@ -7,6 +7,7 @@ import RecentActivity from '@/components/agency/RecentActivity';
 import ActivityGraph from '@/components/agency/ActivityGraph';
 import { Menu, User, LogOut, Home, FileText, Upload, QrCode, BarChart3, Settings } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from '@/components/ui/use-toast';
 
 const AgencyDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -14,7 +15,28 @@ const AgencyDashboard = () => {
   
   const handleLogout = () => {
     // In a real app, this would clear auth state
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out.",
+    });
     navigate('/');
+  };
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'new-certificate':
+        navigate('/agency/certificates');
+        break;
+      case 'add-organization':
+        navigate('/agency/organizations');
+        break;
+      case 'generate-qr':
+        navigate('/agency/qr-codes');
+        break;
+      case 'generate-report':
+        navigate('/agency/reports');
+        break;
+    }
   };
 
   return (
@@ -118,19 +140,31 @@ const AgencyDashboard = () => {
               <div>
                 <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
                 <div className="grid grid-cols-2 gap-4">
-                  <Button className="h-24 flex flex-col items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary">
+                  <Button 
+                    className="h-24 flex flex-col items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary"
+                    onClick={() => handleQuickAction('new-certificate')}
+                  >
                     <Upload className="h-6 w-6 mb-1" />
                     New Certificate
                   </Button>
-                  <Button className="h-24 flex flex-col items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary">
+                  <Button 
+                    className="h-24 flex flex-col items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary"
+                    onClick={() => handleQuickAction('add-organization')}
+                  >
                     <FileText className="h-6 w-6 mb-1" />
                     Add Organization
                   </Button>
-                  <Button className="h-24 flex flex-col items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary">
+                  <Button 
+                    className="h-24 flex flex-col items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary"
+                    onClick={() => handleQuickAction('generate-qr')}
+                  >
                     <QrCode className="h-6 w-6 mb-1" />
                     Generate QR
                   </Button>
-                  <Button className="h-24 flex flex-col items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary">
+                  <Button 
+                    className="h-24 flex flex-col items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary"
+                    onClick={() => handleQuickAction('generate-report')}
+                  >
                     <BarChart3 className="h-6 w-6 mb-1" />
                     Generate Report
                   </Button>
