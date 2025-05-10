@@ -25,12 +25,6 @@ const Navbar = () => {
             <Link to="/verify" className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors">
               Verify
             </Link>
-            <Link to="/about" className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors">
-              About
-            </Link>
-            <Link to="/contact" className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors">
-              Contact
-            </Link>
             <Link to="/agency/login">
               <Button variant="outline" className="ml-4">
                 Agency Login
@@ -68,18 +62,6 @@ const Navbar = () => {
               onClick={() => setIsOpen(false)}
             >
               Verify
-            </Link>
-            <Link to="/about" 
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"
-              onClick={() => setIsOpen(false)}
-            >
-              About
-            </Link>
-            <Link to="/contact" 
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"
-              onClick={() => setIsOpen(false)}
-            >
-              Contact
             </Link>
             <Link to="/agency/login" 
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"

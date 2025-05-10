@@ -12,343 +12,368 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
-import { FileUploader } from '@/components/agency/FileUploader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, QrCode, Eye, Download, Check } from 'lucide-react';
-
-// Mock certificates data
-const mockCertificates = [
-  { id: 1, name: 'Certificate #12345', organization: 'University of Technology', status: 'Processed', date: '2025-04-28', hasQr: true },
-  { id: 2, name: 'Certificate #12346', organization: 'University of Technology', status: 'Processed', date: '2025-04-28', hasQr: true },
-  { id: 3, name: 'Certificate #12347', organization: 'Global Institute', status: 'Pending QR', date: '2025-04-27', hasQr: false },
-  { id: 4, name: 'Certificate #12348', organization: 'EduCert Academy', status: 'Pending QR', date: '2025-04-26', hasQr: false },
-];
-
-// Mock QR codes data
-const mockQrCodes = [
-  { id: 1, name: 'QR #12345', organization: 'University of Technology', date: '2025-04-28' },
-  { id: 2, name: 'QR #12346', organization: 'University of Technology', date: '2025-04-28' },
-  { id: 3, name: 'QR #12347', organization: 'Global Institute', date: '2025-04-27' },
-];
+import { FileArchive, Download, Archive, Check } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import AgencyNavbar from '@/components/agency/AgencyNavbar';
 
 const CertificatesPage = () => {
-  const [certificates, setCertificates] = useState(mockCertificates);
-  const [selectedCertificates, setSelectedCertificates] = useState<number[]>([]);
-  const [selectedQrCodes, setSelectedQrCodes] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState('upload');
-  const [selectedOrganization, setSelectedOrganization] = useState('');
+  const [qrZipFile, setQrZipFile] = useState<File | null>(null);
+  const [certZipFile, setCertZipFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [merging, setMerging] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const qrZipInputRef = useRef<HTMLInputElement>(null);
+  const certZipInputRef = useRef<HTMLInputElement>(null);
 
-  const handleCertificateUpload = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    
-    if (!selectedOrganization) {
+  // Mocked certificate and QR code files
+  const mockFiles = {
+    qrFiles: [
+      { name: 'QR_CERT001.png', size: 12345 },
+      { name: 'QR_CERT002.png', size: 10234 },
+      { name: 'QR_CERT003.png', size: 11567 }
+    ],
+    certFiles: [
+      { name: 'CERT001.pdf', size: 145678 },
+      { name: 'CERT002.pdf', size: 134567 },
+      { name: 'CERT003.pdf', size: 156789 }
+    ],
+    mergedFiles: [] as { name: string, merged: boolean }[]
+  };
+
+  const [filesList, setFilesList] = useState(mockFiles);
+
+  const handleQrZipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.name.endsWith('.zip')) {
+      setQrZipFile(file);
+    } else if (file) {
       toast({
-        title: "Error",
-        description: "Please select an organization first",
+        title: "Invalid file type",
+        description: "Please upload a zip file containing QR codes",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCertZipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.name.endsWith('.zip')) {
+      setCertZipFile(file);
+    } else if (file) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a zip file containing certificates",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpload = () => {
+    if (!qrZipFile || !certZipFile) {
+      toast({
+        title: "Missing files",
+        description: "Please upload both QR code and certificate zip files",
         variant: "destructive",
       });
       return;
     }
-    
+
     setUploading(true);
-    
-    // Simulate upload process
-    setTimeout(() => {
-      setUploading(false);
-      
-      // Create new certificate entries
-      const newCertificates = Array.from(files).map((file, index) => ({
-        id: certificates.length + index + 1,
-        name: file.name.substring(0, file.name.lastIndexOf('.')),
-        organization: selectedOrganization,
-        status: 'Pending QR',
-        date: new Date().toISOString().split('T')[0],
-        hasQr: false
-      }));
-      
-      setCertificates([...newCertificates, ...certificates]);
-      
-      toast({
-        title: "Upload Complete",
-        description: `${files.length} certificates uploaded successfully.`,
-      });
-    }, 2000);
-  };
-  
-  const handleCertificateSelection = (id: number) => {
-    setSelectedCertificates(prev => 
-      prev.includes(id) 
-        ? prev.filter(certId => certId !== id) 
-        : [...prev, id]
-    );
-  };
-  
-  const handleQrCodeSelection = (id: number) => {
-    setSelectedQrCodes(prev => 
-      prev.includes(id) 
-        ? prev.filter(qrId => qrId !== id) 
-        : [...prev, id]
-    );
-  };
-  
-  const handleAttachQRs = () => {
-    if (selectedCertificates.length === 0 || selectedQrCodes.length === 0) {
-      toast({
-        title: "Selection Required",
-        description: "Please select both certificates and QR codes to attach.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (selectedCertificates.length !== selectedQrCodes.length) {
-      toast({
-        title: "Mismatch",
-        description: "The number of selected certificates and QR codes must match.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setProcessing(true);
-    
-    // Simulate processing
-    setTimeout(() => {
-      // Update certificates to mark as having QR codes
-      const updatedCertificates = certificates.map(cert => {
-        if (selectedCertificates.includes(cert.id)) {
-          return { ...cert, hasQr: true, status: 'Processed' };
+    setProgress(0);
+
+    // Simulate file upload and processing
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
         }
-        return cert;
+        return prev + 5;
+      });
+    }, 150);
+
+    // Simulate processing time
+    setTimeout(() => {
+      clearInterval(interval);
+      setUploading(false);
+      setProgress(100);
+
+      // Create matched files for merging
+      const mergedFiles = filesList.qrFiles.map(qrFile => {
+        // Extract certificate ID from QR filename (assuming format QR_CERTXXX.png)
+        const certId = qrFile.name.substring(3, qrFile.name.lastIndexOf('.'));
+        return {
+          name: certId,
+          merged: false
+        };
       });
       
-      setCertificates(updatedCertificates);
-      setSelectedCertificates([]);
-      setSelectedQrCodes([]);
-      setProcessing(false);
+      setFilesList({
+        ...filesList,
+        mergedFiles
+      });
+      
+      setActiveTab('attach');
       
       toast({
-        title: "Success",
-        description: "QR codes have been attached to certificates successfully.",
+        title: "Files uploaded",
+        description: "QR codes and certificates are ready to be attached",
       });
     }, 3000);
   };
-  
-  return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">Certificate Management</h2>
+
+  const handleMerge = () => {
+    setMerging(true);
+    
+    // Simulate merging process
+    let count = 0;
+    const interval = setInterval(() => {
+      setFilesList(prev => {
+        if (count >= prev.mergedFiles.length) {
+          clearInterval(interval);
+          return prev;
+        }
+        
+        const updated = {...prev};
+        updated.mergedFiles[count].merged = true;
+        count++;
+        return updated;
+      });
+    }, 800);
+    
+    // Complete the process after all files are "merged"
+    setTimeout(() => {
+      clearInterval(interval);
+      setMerging(false);
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
-          <TabsTrigger value="upload">Upload Certificates</TabsTrigger>
-          <TabsTrigger value="manage">Manage Certificates</TabsTrigger>
-          <TabsTrigger value="attach">Attach QR Codes</TabsTrigger>
-        </TabsList>
+      toast({
+        title: "Merging complete",
+        description: "All certificates have been merged with QR codes",
+      });
+    }, filesList.mergedFiles.length * 800 + 200);
+  };
+
+  const handleDownloadAll = () => {
+    toast({
+      title: "Download Started",
+      description: "The merged certificates are being prepared for download as a ZIP file.",
+    });
+    
+    // Simulate download delay
+    setTimeout(() => {
+      toast({
+        title: "Download Complete",
+        description: "Merged certificates have been downloaded successfully.",
+      });
+    }, 2000);
+  };
+
+  const resetFiles = () => {
+    setQrZipFile(null);
+    setCertZipFile(null);
+    if (qrZipInputRef.current) qrZipInputRef.current.value = '';
+    if (certZipInputRef.current) certZipInputRef.current.value = '';
+  };
+
+  return (
+    <div>
+      <AgencyNavbar />
+      
+      <div className="p-6">
+        <h2 className="text-2xl font-bold mb-6">Certificate Management</h2>
         
-        <TabsContent value="upload" className="w-full">
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload Certificates</CardTitle>
-              <CardDescription>
-                Upload PDF certificates from organizations to process them
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="organization">Select Organization</Label>
-                  <select
-                    id="organization"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1"
-                    value={selectedOrganization}
-                    onChange={(e) => setSelectedOrganization(e.target.value)}
-                  >
-                    <option value="">Select an organization</option>
-                    <option value="University of Technology">University of Technology</option>
-                    <option value="Global Institute">Global Institute</option>
-                    <option value="EduCert Academy">EduCert Academy</option>
-                  </select>
-                </div>
-                
-                <FileUploader
-                  onFilesSelected={handleCertificateUpload}
-                  acceptedFileTypes=".pdf"
-                  maxFiles={10}
-                  maxSize={5}
-                  isUploading={uploading}
-                  label="Drag & drop PDF files here, or click to browse"
-                  description="Upload up to 10 PDF certificates (max 5 MB each)"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="manage">
-          <Card>
-            <CardHeader>
-              <CardTitle>Certificate Inventory</CardTitle>
-              <CardDescription>
-                View and manage all uploaded certificates
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex gap-2 mb-4">
-                  <Input 
-                    placeholder="Search certificates..." 
-                    className="max-w-sm"
-                  />
-                  <Button variant="outline">Search</Button>
-                </div>
-                
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {certificates.map((cert) => (
-                    <Card key={cert.id} className="overflow-hidden">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">{cert.name}</CardTitle>
-                        <CardDescription>{cert.organization}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="pb-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Date: {cert.date}</span>
-                          <span className={`px-2 py-0.5 text-xs rounded-full ${
-                            cert.status === 'Processed' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {cert.status}
-                          </span>
-                        </div>
-                      </CardContent>
-                      <CardFooter className="flex justify-between pt-0">
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-2" />
-                          Preview
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="attach">
-          <div className="grid md:grid-cols-2 gap-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="upload">Upload Files</TabsTrigger>
+            <TabsTrigger value="attach">Attach QR Codes</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="upload" className="w-full">
             <Card>
               <CardHeader>
-                <CardTitle>Select Certificates</CardTitle>
+                <CardTitle>Upload Certificate and QR Code Files</CardTitle>
                 <CardDescription>
-                  Choose certificates to attach QR codes to
+                  Upload zip files containing certificates and QR codes to merge them
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="max-h-[400px] overflow-y-auto border rounded-md">
-                    <table className="w-full">
-                      <thead className="sticky top-0 bg-background">
-                        <tr className="border-b">
-                          <th className="text-left p-2">Select</th>
-                          <th className="text-left p-2">Certificate</th>
-                          <th className="text-left p-2">Organization</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {certificates.filter(c => !c.hasQr).map((cert) => (
-                          <tr key={cert.id} className="border-b hover:bg-muted/50">
-                            <td className="p-2">
-                              <input 
-                                type="checkbox" 
-                                checked={selectedCertificates.includes(cert.id)}
-                                onChange={() => handleCertificateSelection(cert.id)} 
-                                className="h-4 w-4"
-                              />
-                            </td>
-                            <td className="p-2">{cert.name}</td>
-                            <td className="p-2">{cert.organization}</td>
-                          </tr>
-                        ))}
-                        {certificates.filter(c => !c.hasQr).length === 0 && (
-                          <tr>
-                            <td colSpan={3} className="p-4 text-center text-muted-foreground">
-                              No certificates need QR codes
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Select QR Codes</CardTitle>
-                <CardDescription>
-                  Choose QR codes to attach to certificates
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="max-h-[400px] overflow-y-auto border rounded-md">
-                    <table className="w-full">
-                      <thead className="sticky top-0 bg-background">
-                        <tr className="border-b">
-                          <th className="text-left p-2">Select</th>
-                          <th className="text-left p-2">QR Code</th>
-                          <th className="text-left p-2">Organization</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {mockQrCodes.map((qr) => (
-                          <tr key={qr.id} className="border-b hover:bg-muted/50">
-                            <td className="p-2">
-                              <input 
-                                type="checkbox"
-                                checked={selectedQrCodes.includes(qr.id)}
-                                onChange={() => handleQrCodeSelection(qr.id)}
-                                className="h-4 w-4"
-                              />
-                            </td>
-                            <td className="p-2">{qr.name}</td>
-                            <td className="p-2">{qr.organization}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="qrZip">Upload QR Codes (ZIP file)</Label>
+                    <Input
+                      id="qrZip"
+                      type="file"
+                      ref={qrZipInputRef}
+                      onChange={handleQrZipChange}
+                      accept=".zip"
+                      className="flex-1"
+                    />
+                    {qrZipFile && (
+                      <p className="text-sm text-muted-foreground">
+                        {qrZipFile.name} ({(qrZipFile.size / 1024).toFixed(2)} KB)
+                      </p>
+                    )}
                   </div>
                   
-                  <div className="flex justify-end">
-                    <Button 
-                      disabled={selectedCertificates.length === 0 || selectedQrCodes.length === 0 || processing}
-                      onClick={handleAttachQRs}
+                  <div className="space-y-2">
+                    <Label htmlFor="certZip">Upload Certificates (ZIP file)</Label>
+                    <Input
+                      id="certZip"
+                      type="file"
+                      ref={certZipInputRef}
+                      onChange={handleCertZipChange}
+                      accept=".zip"
+                      className="flex-1"
+                    />
+                    {certZipFile && (
+                      <p className="text-sm text-muted-foreground">
+                        {certZipFile.name} ({(certZipFile.size / 1024).toFixed(2)} KB)
+                      </p>
+                    )}
+                  </div>
+                  
+                  {uploading && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label>Processing ZIP files</Label>
+                        <span className="text-sm">{progress}%</span>
+                      </div>
+                      <Progress value={progress} className="w-full" />
+                    </div>
+                  )}
+                  
+                  <div className="flex space-x-2">
+                    <Button
+                      onClick={handleUpload}
+                      disabled={!qrZipFile || !certZipFile || uploading}
+                      className="flex-1"
                     >
-                      {processing ? (
-                        <>Processing...</>
-                      ) : (
-                        <>
-                          <Check className="h-4 w-4 mr-2" />
-                          Attach QR Codes
-                        </>
-                      )}
+                      <FileArchive className="mr-2 h-4 w-4" />
+                      Process Files
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      onClick={resetFiles}
+                      disabled={uploading}
+                    >
+                      Reset
                     </Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+          
+          <TabsContent value="attach">
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Files Ready for Merging</CardTitle>
+                  <CardDescription>
+                    QR codes and certificates with matching names will be merged
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>QR Code Files</Label>
+                      <div className="border rounded-md p-2 max-h-[200px] overflow-y-auto">
+                        <ul className="space-y-1">
+                          {filesList.qrFiles.map((file, index) => (
+                            <li key={`qr-${index}`} className="text-sm flex justify-between">
+                              <span>{file.name}</span>
+                              <span className="text-muted-foreground">{(file.size / 1024).toFixed(2)} KB</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Certificate Files</Label>
+                      <div className="border rounded-md p-2 max-h-[200px] overflow-y-auto">
+                        <ul className="space-y-1">
+                          {filesList.certFiles.map((file, index) => (
+                            <li key={`cert-${index}`} className="text-sm flex justify-between">
+                              <span>{file.name}</span>
+                              <span className="text-muted-foreground">{(file.size / 1024).toFixed(2)} KB</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    onClick={handleMerge}
+                    disabled={merging || filesList.mergedFiles.length === 0}
+                    className="w-full"
+                  >
+                    <Archive className="mr-2 h-4 w-4" />
+                    {merging ? "Merging..." : "Merge Files"}
+                  </Button>
+                </CardFooter>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Merge Status</CardTitle>
+                  <CardDescription>
+                    Status of QR code and certificate merging process
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="border rounded-md p-2 max-h-[300px] overflow-y-auto">
+                      <ul className="space-y-2">
+                        {filesList.mergedFiles.map((file, index) => (
+                          <li key={`merge-${index}`} className="text-sm flex items-center justify-between">
+                            <span>Certificate {file.name}</span>
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              file.merged ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {file.merged ? 'Merged' : 'Pending'}
+                            </span>
+                          </li>
+                        ))}
+                        
+                        {filesList.mergedFiles.length === 0 && (
+                          <li className="text-center text-muted-foreground py-4">
+                            No files processed yet. Upload and process files first.
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                    
+                    {filesList.mergedFiles.length > 0 && filesList.mergedFiles.every(f => f.merged) && (
+                      <div className="text-center p-2 bg-green-50 rounded-md border border-green-200">
+                        <p className="text-green-800 flex items-center justify-center">
+                          <Check className="h-4 w-4 mr-1" />
+                          All certificates successfully merged with QR codes
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    onClick={handleDownloadAll}
+                    disabled={!filesList.mergedFiles.some(f => f.merged)}
+                    className="w-full"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Merged ZIP
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };
