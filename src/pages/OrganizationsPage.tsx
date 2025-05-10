@@ -23,20 +23,22 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { PlusCircle, Edit, Trash } from 'lucide-react';
 
-// Mock data for organizations
+type OrganizationStatus = 'Active' | 'Inactive' | 'Pending';
+
+// Mock data for organizations - ensure status is explicitly typed
 const initialOrganizations = [
-  { id: 1, name: 'University of Technology', contact: 'admin@uot.edu', status: 'Active', certificatesIssued: 1245 },
-  { id: 2, name: 'Global Institute', contact: 'tech@globalinst.org', status: 'Active', certificatesIssued: 987 },
-  { id: 3, name: 'EduCert Academy', contact: 'info@educert.com', status: 'Inactive', certificatesIssued: 532 },
-  { id: 4, name: 'Professional Training Center', contact: 'admin@ptc.net', status: 'Active', certificatesIssued: 345 },
-  { id: 5, name: 'Academic Excellence', contact: 'support@acexcel.edu', status: 'Pending', certificatesIssued: 0 },
+  { id: 1, name: 'University of Technology', contact: 'admin@uot.edu', status: 'Active' as OrganizationStatus, certificatesIssued: 1245 },
+  { id: 2, name: 'Global Institute', contact: 'tech@globalinst.org', status: 'Active' as OrganizationStatus, certificatesIssued: 987 },
+  { id: 3, name: 'EduCert Academy', contact: 'info@educert.com', status: 'Inactive' as OrganizationStatus, certificatesIssued: 532 },
+  { id: 4, name: 'Professional Training Center', contact: 'admin@ptc.net', status: 'Active' as OrganizationStatus, certificatesIssued: 345 },
+  { id: 5, name: 'Academic Excellence', contact: 'support@acexcel.edu', status: 'Pending' as OrganizationStatus, certificatesIssued: 0 },
 ];
 
 type Organization = {
   id: number;
   name: string;
   contact: string;
-  status: 'Active' | 'Inactive' | 'Pending';
+  status: OrganizationStatus;
   certificatesIssued: number;
 };
 
@@ -166,7 +168,7 @@ const OrganizationsPage = () => {
                   className="col-span-3 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1"
                   value={editingOrg ? editingOrg.status : newOrg.status}
                   onChange={(e) => {
-                    const value = e.target.value as 'Active' | 'Inactive' | 'Pending';
+                    const value = e.target.value as OrganizationStatus;
                     editingOrg 
                       ? setEditingOrg({...editingOrg, status: value})
                       : setNewOrg({...newOrg, status: value});
