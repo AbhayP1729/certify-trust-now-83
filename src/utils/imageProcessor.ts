@@ -16,18 +16,28 @@ export async function extractZipFiles(zipFile: File): Promise<{ filename: string
     const files: { filename: string; blob: Blob }[] = [];
     
     const filePromises = Object.keys(zipData.files)
-      .filter(fileName => !zipData.files[fileName].dir && 
-        (fileName.toLowerCase().endsWith('.jpg') || 
-         fileName.toLowerCase().endsWith('.jpeg') ||
-         fileName.toLowerCase().endsWith('.png')))
+      .filter(fileName => {
+        // Don't process directories, only files
+        if (zipData.files[fileName].dir) return false;
+        
+        // Check if it's an image file (case insensitive)
+        const lowerCaseName = fileName.toLowerCase();
+        return lowerCaseName.endsWith('.jpg') || 
+               lowerCaseName.endsWith('.jpeg') ||
+               lowerCaseName.endsWith('.png');
+      })
       .map(async (fileName) => {
         const fileData = await zipData.files[fileName].async('blob');
         // Extract just the filename without directories
         const baseName = fileName.split('/').pop() || fileName;
         files.push({ filename: baseName, blob: fileData });
+        
+        // Debug log to verify extracted files
+        console.log(`Extracted file: ${baseName}`);
       });
     
     await Promise.all(filePromises);
+    console.log(`Total files extracted: ${files.length}`);
     return files;
   } catch (error) {
     console.error('Error extracting zip file:', error);

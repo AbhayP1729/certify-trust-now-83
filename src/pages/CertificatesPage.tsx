@@ -116,26 +116,42 @@ const CertificatesPage = () => {
     try {
       // Extract QR codes
       setProgress(10);
+      console.log("Extracting QR codes from:", qrZipFile.name);
       const qrExtractedFiles = await extractZipFiles(qrZipFile);
-      const qrFiles = qrExtractedFiles.map(file => ({
-        name: file.filename,
-        id: extractFileId(file.filename),
-        size: file.blob.size,
-        blob: file.blob
-      })).filter(file => file.id !== -1);
+      console.log("QR extracted files:", qrExtractedFiles.length);
       
+      const qrFiles = qrExtractedFiles.map(file => {
+        const id = extractFileId(file.filename);
+        console.log(`Processing QR file: ${file.filename}, ID: ${id}`);
+        return {
+          name: file.filename,
+          id: id,
+          size: file.blob.size,
+          blob: file.blob
+        };
+      }).filter(file => file.id !== -1);
+      
+      console.log("Processed QR files:", qrFiles.length);
       setProgress(40);
       setProgressMessage('Extracting certificate files...');
       
       // Extract certificates
+      console.log("Extracting certificates from:", certZipFile.name);
       const certExtractedFiles = await extractZipFiles(certZipFile);
-      const certFiles = certExtractedFiles.map(file => ({
-        name: file.filename,
-        id: extractFileId(file.filename),
-        size: file.blob.size,
-        blob: file.blob
-      })).filter(file => file.id !== -1);
-
+      console.log("Certificate extracted files:", certExtractedFiles.length);
+      
+      const certFiles = certExtractedFiles.map(file => {
+        const id = extractFileId(file.filename);
+        console.log(`Processing certificate file: ${file.filename}, ID: ${id}`);
+        return {
+          name: file.filename,
+          id: id,
+          size: file.blob.size,
+          blob: file.blob
+        };
+      }).filter(file => file.id !== -1);
+      
+      console.log("Processed certificate files:", certFiles.length);
       setProgress(70);
       setProgressMessage('Processing files...');
       
