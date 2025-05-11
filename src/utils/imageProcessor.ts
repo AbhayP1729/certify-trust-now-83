@@ -75,7 +75,7 @@ export async function mergeQrCodeOnCertificate(
   certificateBlob: Blob,
   qrCodeBlob: Blob,
   qrSizePercent = 15, // QR code size as percentage of certificate width
-  positionX = 'right', // 'left', 'center', 'right' 
+  positionX = 'left', // Changed from 'right' to 'left'
   positionY = 'top', // 'top', 'middle', 'bottom'
   marginPercent = 2 // Margin from the edges as percentage of certificate width
 ): Promise<Blob> {
@@ -104,7 +104,7 @@ export async function mergeQrCodeOnCertificate(
     const margin = Math.round((certificateImg.width * marginPercent) / 100);
     
     // Calculate position
-    let x = margin;
+    let x = margin; // Default to left position (changed from right)
     let y = margin;
     
     if (positionX === 'center') {

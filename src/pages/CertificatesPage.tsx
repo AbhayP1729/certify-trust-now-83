@@ -226,7 +226,7 @@ const CertificatesPage = () => {
               cert.blob,
               qr.blob,
               15, // QR code size (15% of certificate width)
-              'right', // Position X
+              'left', // Changed from 'right' to 'left'
               'top', // Position Y
               2 // Margin (2% of certificate width)
             );
