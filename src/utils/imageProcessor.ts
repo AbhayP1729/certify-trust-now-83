@@ -69,6 +69,29 @@ export function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
 }
 
 /**
+ * Generate a sample preview for adjustment
+ */
+export async function generatePreviewImage(
+  certificateBlob: Blob,
+  qrCodeBlob: Blob,
+  qrSizePercent: number,
+  positionX: string,
+  positionY: string,
+  marginPercent: number
+): Promise<string> {
+  const mergedBlob = await mergeQrCodeOnCertificate(
+    certificateBlob,
+    qrCodeBlob,
+    qrSizePercent,
+    positionX,
+    positionY,
+    marginPercent
+  );
+  
+  return URL.createObjectURL(mergedBlob);
+}
+
+/**
  * Merge QR code onto certificate
  */
 export async function mergeQrCodeOnCertificate(
@@ -104,7 +127,7 @@ export async function mergeQrCodeOnCertificate(
     const margin = Math.round((certificateImg.width * marginPercent) / 100);
     
     // Calculate position
-    let x = margin; // Default to left position (changed from right)
+    let x = margin; // Default to left position
     let y = margin;
     
     if (positionX === 'center') {

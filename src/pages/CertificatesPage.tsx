@@ -1,5 +1,5 @@
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -13,14 +13,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileArchive, Download, Merge, QrCode, Image } from 'lucide-react';
+import { FileArchive, Download, Merge, QrCode, Image, Settings } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import AgencyNavbar from '@/components/agency/AgencyNavbar';
 import { FileUploader } from '@/components/agency/FileUploader';
+import { Slider } from '@/components/ui/slider';
 import { 
   extractZipFiles, 
-  extractFileId, 
-  mergeQrCodeOnCertificate, 
+  extractFileId,
+  loadImageFromBlob,
+  mergeQrCodeOnCertificate,
+  generatePreviewImage, 
   createMergedZip 
 } from '@/utils/imageProcessor';
 import {
@@ -31,6 +34,21 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { 
+  Form, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormControl, 
+  FormDescription 
+} from "@/components/ui/form";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface MergedFile {
   name: string;
@@ -47,6 +65,13 @@ interface ProcessedFile {
   blob: Blob;
 }
 
+interface QRPositionSettings {
+  positionX: 'left' | 'center' | 'right';
+  positionY: 'top' | 'middle' | 'bottom';
+  size: number;
+  margin: number;
+}
+
 const CertificatesPage = () => {
   const [activeTab, setActiveTab] = useState('upload');
   const [qrZipFile, setQrZipFile] = useState<File | null>(null);
@@ -58,6 +83,15 @@ const CertificatesPage = () => {
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [selectedPreview, setSelectedPreview] = useState<string | null>(null);
   const [selectedPreviewName, setSelectedPreviewName] = useState('');
+  const [firstCertPreview, setFirstCertPreview] = useState<string | null>(null);
+  
+  // QR positioning settings
+  const [qrSettings, setQrSettings] = useState<QRPositionSettings>({
+    positionX: 'left',
+    positionY: 'top',
+    size: 15, // Percentage of certificate width
+    margin: 2  // Percentage of certificate width
+  });
   
   const [filesList, setFilesList] = useState<{
     qrFiles: ProcessedFile[];
@@ -69,11 +103,15 @@ const CertificatesPage = () => {
     mergedFiles: []
   });
 
+  // Generate position preview
+  const [positionPreviewUrl, setPositionPreviewUrl] = useState<string | null>(null);
+
   const handleQrZipSelected = useCallback((files: FileList | null) => {
     if (files && files.length > 0) {
       const file = files[0];
       if (file.name.endsWith('.zip')) {
         setQrZipFile(file);
+        setPositionPreviewUrl(null); // Reset preview when new file is uploaded
       } else {
         toast({
           title: "Invalid file type",
@@ -89,6 +127,7 @@ const CertificatesPage = () => {
       const file = files[0];
       if (file.name.endsWith('.zip')) {
         setCertZipFile(file);
+        setPositionPreviewUrl(null); // Reset preview when new file is uploaded
       } else {
         toast({
           title: "Invalid file type",
@@ -172,8 +211,13 @@ const CertificatesPage = () => {
         certFiles,
         mergedFiles
       });
+
+      // If we have at least one certificate and one QR code, generate a preview for position adjustment
+      if (certFiles.length > 0 && qrFiles.length > 0) {
+        generatePositionPreview(certFiles[0].blob, qrFiles[0].blob);
+      }
       
-      setActiveTab('attach');
+      setActiveTab('position');
       setUploading(false);
       
       toast({
@@ -190,6 +234,36 @@ const CertificatesPage = () => {
       });
     }
   };
+
+  const generatePositionPreview = async (certBlob: Blob, qrBlob: Blob) => {
+    try {
+      const previewUrl = await generatePreviewImage(
+        certBlob,
+        qrBlob,
+        qrSettings.size,
+        qrSettings.positionX,
+        qrSettings.positionY,
+        qrSettings.margin
+      );
+      
+      setPositionPreviewUrl(previewUrl);
+      console.log("Position preview generated");
+    } catch (error) {
+      console.error('Error generating position preview:', error);
+      toast({
+        title: "Error generating preview",
+        description: "Failed to generate QR position preview",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Update preview when settings change
+  useEffect(() => {
+    if (filesList.certFiles.length > 0 && filesList.qrFiles.length > 0) {
+      generatePositionPreview(filesList.certFiles[0].blob, filesList.qrFiles[0].blob);
+    }
+  }, [qrSettings, filesList.certFiles, filesList.qrFiles]);
 
   const handleMerge = async () => {
     if (filesList.qrFiles.length === 0 || filesList.certFiles.length === 0) {
@@ -221,18 +295,23 @@ const CertificatesPage = () => {
           setProgress(Math.round(((i + 1) / totalFiles) * 100));
           
           try {
-            // Merge QR code onto certificate
+            // Merge QR code onto certificate using the user's position settings
             const mergedBlob = await mergeQrCodeOnCertificate(
               cert.blob,
               qr.blob,
-              15, // QR code size (15% of certificate width)
-              'left', // Changed from 'right' to 'left'
-              'top', // Position Y
-              2 // Margin (2% of certificate width)
+              qrSettings.size,
+              qrSettings.positionX,
+              qrSettings.positionY,
+              qrSettings.margin
             );
             
             // Create a preview URL
             const previewUrl = URL.createObjectURL(mergedBlob);
+            
+            // Save first merged certificate preview for display
+            if (i === 0) {
+              setFirstCertPreview(previewUrl);
+            }
             
             mergedResults.push({
               name: `MERGED_${cert.id.toString().padStart(2, '0')}`,
@@ -263,6 +342,9 @@ const CertificatesPage = () => {
         ...prev,
         mergedFiles: mergedResults
       }));
+      
+      // Switch to attach tab to show merge results
+      setActiveTab('attach');
       
       toast({
         title: "Merging complete",
@@ -352,6 +434,8 @@ const CertificatesPage = () => {
       certFiles: [],
       mergedFiles: []
     });
+    setPositionPreviewUrl(null);
+    setFirstCertPreview(null);
     
     // Clean up any object URLs to prevent memory leaks
     filesList.mergedFiles.forEach(file => {
@@ -359,6 +443,9 @@ const CertificatesPage = () => {
         URL.revokeObjectURL(file.previewUrl);
       }
     });
+    if (positionPreviewUrl) {
+      URL.revokeObjectURL(positionPreviewUrl);
+    }
   };
 
   return (
@@ -369,8 +456,9 @@ const CertificatesPage = () => {
         <h2 className="text-2xl font-bold mb-6">Certificate Management</h2>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="upload">Upload Files</TabsTrigger>
+            <TabsTrigger value="position">Adjust QR Position</TabsTrigger>
             <TabsTrigger value="attach">Merge QR Codes</TabsTrigger>
           </TabsList>
           
@@ -443,13 +531,132 @@ const CertificatesPage = () => {
             </Card>
           </TabsContent>
           
+          {/* New QR Position Adjustment Tab */}
+          <TabsContent value="position" className="w-full">
+            <Card>
+              <CardHeader>
+                <CardTitle>Adjust QR Code Position</CardTitle>
+                <CardDescription>
+                  Position the QR code on the certificate before merging
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">Position Controls</h3>
+                      <div className="space-y-6">
+                        <div className="space-y-3">
+                          <Label>Horizontal Position</Label>
+                          <Select 
+                            value={qrSettings.positionX} 
+                            onValueChange={(value) => setQrSettings({...qrSettings, positionX: value as 'left' | 'center' | 'right'})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select position" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="left">Left</SelectItem>
+                              <SelectItem value="center">Center</SelectItem>
+                              <SelectItem value="right">Right</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <Label>Vertical Position</Label>
+                          <Select 
+                            value={qrSettings.positionY} 
+                            onValueChange={(value) => setQrSettings({...qrSettings, positionY: value as 'top' | 'middle' | 'bottom'})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select position" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="top">Top</SelectItem>
+                              <SelectItem value="middle">Middle</SelectItem>
+                              <SelectItem value="bottom">Bottom</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <Label>QR Code Size (%)</Label>
+                            <span>{qrSettings.size}%</span>
+                          </div>
+                          <Slider 
+                            value={[qrSettings.size]}
+                            min={5}
+                            max={30}
+                            step={1}
+                            onValueChange={(value) => setQrSettings({...qrSettings, size: value[0]})}
+                          />
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <Label>Margin (%)</Label>
+                            <span>{qrSettings.margin}%</span>
+                          </div>
+                          <Slider 
+                            value={[qrSettings.margin]}
+                            min={1}
+                            max={10}
+                            step={1}
+                            onValueChange={(value) => setQrSettings({...qrSettings, margin: value[0]})}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">Preview</h3>
+                      <div className="border rounded-md overflow-hidden bg-gray-50 h-80 flex items-center justify-center">
+                        {positionPreviewUrl ? (
+                          <img 
+                            src={positionPreviewUrl} 
+                            alt="QR position preview"
+                            className="max-w-full max-h-full object-contain" 
+                          />
+                        ) : (
+                          <div className="text-center p-4 text-gray-400">
+                            <p>Upload files to see the preview</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-4 text-center text-sm text-gray-500">
+                        <p>This preview shows how the QR will be positioned on all certificates</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveTab('upload')}
+                >
+                  Back to Upload
+                </Button>
+                <Button
+                  onClick={handleMerge}
+                  disabled={merging || filesList.certFiles.length === 0 || filesList.qrFiles.length === 0}
+                >
+                  <Merge className="mr-2 h-4 w-4" />
+                  {merging ? "Merging..." : "Proceed to Merge"}
+                </Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+          
           <TabsContent value="attach">
             <div className="grid md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Files Ready for Merging</CardTitle>
                   <CardDescription>
-                    QR codes will be placed at the top right corner of matching certificates
+                    QR codes will be placed at your selected position on matching certificates
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -499,16 +706,40 @@ const CertificatesPage = () => {
                         )}
                       </div>
                     </div>
+                    
+                    {/* First Certificate Preview */}
+                    {firstCertPreview && (
+                      <div className="space-y-2 mt-4">
+                        <Label>First Merged Certificate</Label>
+                        <div className="border rounded-md overflow-hidden">
+                          <img 
+                            src={firstCertPreview} 
+                            alt="First merged certificate"
+                            className="w-full h-auto" 
+                          />
+                        </div>
+                        <p className="text-sm text-center text-gray-500">
+                          Preview of first certificate with QR code
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
                 <CardFooter>
                   <Button
+                    onClick={() => setActiveTab('position')}
+                    variant="outline"
+                    className="mr-2"
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Adjust QR Position
+                  </Button>
+                  <Button
                     onClick={handleMerge}
                     disabled={merging || filesList.certFiles.length === 0 || filesList.qrFiles.length === 0}
-                    className="w-full"
                   >
                     <Merge className="mr-2 h-4 w-4" />
-                    {merging ? "Merging..." : "Merge QR Codes onto Certificates"}
+                    {merging ? "Merging..." : "Merge QR Codes"}
                   </Button>
                 </CardFooter>
               </Card>
@@ -599,7 +830,7 @@ const CertificatesPage = () => {
                 <DialogHeader>
                   <DialogTitle>Preview: {selectedPreviewName}</DialogTitle>
                   <DialogDescription>
-                    Certificate with QR code in the top-right corner
+                    Certificate with QR code at the selected position
                   </DialogDescription>
                 </DialogHeader>
                 
